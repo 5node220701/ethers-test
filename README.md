@@ -4,7 +4,7 @@
 
 npm i 
 
-### Enviroment 
+### Environment 
 
 Chain : Local Ganache
 RPC URL : 127.0.0.1
@@ -22,6 +22,9 @@ npm i
 ### Run
 npm run start
 
+
+### Notion Detail
+https://shrouded-smartphone-8f3.notion.site/TRUFFLE-REACT-Client-01bdbf5b83eb408cb263393b0033b992
 
 ### git commit Comment rule
 **Comment Rule**
