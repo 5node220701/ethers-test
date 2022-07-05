@@ -6,9 +6,9 @@ npm i
 
 ### Environment 
 
-Chain : Local Ganache
-RPC URL : 127.0.0.1
-PORT : 7545
+Chain : Local Ganache  
+RPC URL : 127.0.0.1  
+PORT : 7545  
 
 ### Contract Deploy
 truffle migrate
