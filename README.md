@@ -26,7 +26,8 @@ npm run start
 ### Notion Detail
 https://shrouded-smartphone-8f3.notion.site/TRUFFLE-REACT-Client-01bdbf5b83eb408cb263393b0033b992
 
-### git commit Comment rule
+
+# git commit Comment rule
 **Comment Rule**
 - 어떻게 보다는 무엇과 왜를 설명한다
 - 전체 영어로 작성
