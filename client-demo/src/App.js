@@ -2,52 +2,56 @@ import logo from './logo.svg';
 import './App.css';
 import { ethers } from "ethers";
 import { useEffect, useState } from 'react';
+
 function App() {
   let provider = undefined;
   let signer = undefined;
 
   const [tokenName, setTokenName] = useState("NULL");
   const [inputAddress,setInputAddress] = useState();
-  const [erc20, setErc20] = useState();
-  const [erc20_rw,setErc20_rw] = useState();
+  const [erc20_r, setErc20_r] = useState();
+  const [erc20_w, setErc20_w] = useState();
 
-    //초기 동작
+    //초기 동작 메타마스크 자동 실행
     useEffect(() => {
       connect();
     }, []);
 
     const connect = async() =>{
-      provider = new ethers.providers.Web3Provider(window.ethereum);
-      await provider.send("eth_requestAccounts", []);
-      signer = provider.getSigner();
+      if(window.ethereum){
+        provider = new ethers.providers.Web3Provider(window.ethereum);
+        await provider.send("eth_requestAccounts", []);
+        signer = provider.getSigner();
 
-      //abi 가져오기
-      const artifact = require("./contracts/MyToken.json");
-      const { abi } = artifact;
-      console.log(abi);
-      const contractAddress = "0xa2920862B60BBEf8727287499DeBa9AB6FdC86D6";
+        //abi 가져오기
+        const artifact = require("./contracts/MyToken.json");
+        const { abi } = artifact;
+        const contractAddress = "0xa2920862B60BBEf8727287499DeBa9AB6FdC86D6";
 
-      //read 전용
-      console.log("SET")
-      setErc20(new ethers.Contract(contractAddress, abi, provider));
-      
-      //read, write 전용
-      setErc20_rw(new ethers.Contract(contractAddress, abi, signer)); 
-
+        //read 전용
+        setErc20_r(new ethers.Contract(contractAddress, abi, provider));
+        
+        //read, write 전용
+        setErc20_w(new ethers.Contract(contractAddress, abi, signer)); 
+        
+      }else{
+        alert("Metamask install please")
+        window.location.href = "https://chrome.google.com/webstore/detail/metamask/nkbihfbeogaeaoehlefnkodbefgpgknn";
+      }
     }
     const myTokenGetClick = async() =>{
-      console.log(erc20);
-      setTokenName(await erc20.symbol());
+      setTokenName(await erc20_r.symbol());
     }
 
     const transformClick = async() =>{
       // Each mtt has 18 decimal places
+      // 단위 변경
       const mtt = ethers.utils.parseUnits("1.0", 18);
 
-      const tx = erc20_rw.transfer(inputAddress, mtt);
+      const tx = erc20_w.transfer(inputAddress, mtt);
     }
 
-    const handleChange = (e) => {  // <- input값으로 text 변경 함수
+    const handleChange = (e) => { 
       setInputAddress(e.target.value);
     };
 
