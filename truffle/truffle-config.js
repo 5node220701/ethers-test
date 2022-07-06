@@ -18,8 +18,8 @@
  *
  */
 
-// const HDWalletProvider = require('@truffle/hdwallet-provider');
-//
+ const HDWalletProvider = require('truffle-hdwallet-provider-klaytn');
+ const privateKey = '0xc25b7bac1d462fbb23ea76411e04c716ff80ea591ebb25c4d0fd74d43a0b28a4';
 // const fs = require('fs');
 // const mnemonic = fs.readFileSync(".secret").toString().trim();
 
@@ -47,6 +47,12 @@ module.exports = {
       port: 7545,            // Standard Ethereum port (default: none)
       network_id: "*",       // Any network (default: none)
     },
+    testnet:{
+      provider : () => new HDWalletProvider(privateKey, "https://api.baobab.klaytn.net:8651"),
+      network_id : '1001',
+      gas: null,
+      gasPrice: null
+    }
     //
     // An additional network, but with some advanced options…
     // advanced: {

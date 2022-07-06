@@ -7,13 +7,15 @@ function App() {
   let signer = undefined;
 
   const [tokenName, setTokenName] = useState("NULL");
-  
+  const [tokenCount, setTokenCount] = useState();
+  const [userAddress, setUserAddress] = useState();
+
   const [erc20_r, setErc20_r] = useState();
   const [erc20_w, setErc20_w] = useState();
 
   const [erc721_r, setErc721_r] = useState();
   const [erc721_w, setErc721_w] = useState();
-
+  const [myNftList, setMyNftList] = useState();
   const [inputs, setInputs] = useState({
     inputErc20Address: '',
     inputErc721Address: '',
@@ -32,6 +34,9 @@ function App() {
       provider = new ethers.providers.Web3Provider(window.ethereum);
       await provider.send("eth_requestAccounts", []);
       signer = provider.getSigner();
+      const address = await signer.getAddress();
+      console.log("TT"+address);
+      setUserAddress(address);
 
       //ERC-20 정보 가져오기
       const erc20Artifact = require("./contracts/MyToken.json");
@@ -59,9 +64,12 @@ function App() {
     }
   };
 
-  //토큰명 받아오기
+  //내 토큰 정보받아오기
   const myTokenGetClick = async () => {
     setTokenName(await erc20_r.symbol());
+    let data = await erc20_r.balanceOf(userAddress)
+    console.log(data.toString())
+    setTokenCount(data.toString());
   };
 
   //토큰 전송
@@ -69,15 +77,22 @@ function App() {
 
     // Each mtt has 18 decimal places
     // 단위 변경
-    const mtt = ethers.utils.parseUnits("1.0", 18);
-
+    const mtt = ethers.utils.parseUnits("100.0", 18);
+    console.log(mtt);
     const tx = erc20_w.transfer(inputErc20Address, mtt);
   };
 
   //Mint NFT
   const mintClick = async () => {
-
     const tx = erc721_w.mintNFT(inputErc721Address, inputMeta);
+  };
+
+  //get My NFT
+  const getNftClick = async () => {
+    const tx = await erc721_r.balanceOf(userAddress);
+    console.log(tx);
+
+    listTokensOfOwner();
   };
 
   const handleChange = (e) => {
@@ -88,13 +103,50 @@ function App() {
     });
   };
 
+  const listTokensOfOwner = async() => {
+    const sentLogs = await erc721_r.queryFilter(erc721_r.filters.Transfer(userAddress,null));
+    console.log(sentLogs);
+
+    const receivedLogs = await erc721_r.queryFilter(erc721_r.filters.Transfer(null, userAddress));
+    console.log(receivedLogs);
+
+    const logs = sentLogs.concat(receivedLogs).sort(
+      (a, b) =>
+        a.blockNumber - b.blockNumber ||
+        a.transactionIndex - b.TransactionIndex,
+    );;
+    console.log(logs);
+    const owned = [];
+
+    for (const log of logs) {
+      const { from, to, tokenId } = log.args;
+      
+      if (addressEqual(to, userAddress)) {
+        owned.push(tokenId.toString());
+      } else if (addressEqual(from, userAddress)) {
+        owned.delete(tokenId.toString());
+      }
+    }
+    setMyNftList([...owned]);
+    console.log(myNftList);
+  }
+
+  const addressEqual = (to,account)=> {
+    if(to.toLowerCase()===account.toLowerCase())return true;
+    else return false;
+  }
   return (
     <div className="App">
       <header className="App-header">ETH TEST</header>
       <body>
+        <label>My Address : {userAddress} </label>
+        <br />
         <br />
         <label>토큰정보 : {tokenName} </label>
         <button onClick={myTokenGetClick}>발행한 토큰 정보 가져오기</button>
+        <br />
+        <br />
+        <label>현재 소유하고 있는 토큰 수 : {tokenCount} </label>
         <br />
         <label>전송할 주소 </label>
         <input
@@ -124,6 +176,14 @@ function App() {
           value={inputErc721Address}
         ></input>
         <button onClick={mintClick}>전송</button>
+
+        <br/>
+        <button onClick={getNftClick}>myNFT 조회</button>
+        <br/>
+        {myNftList&&myNftList.map((data)=>{
+          return <p>{data}</p>
+        })}
+
       </body>
     </div>
   );
