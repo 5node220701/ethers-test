@@ -22,31 +22,34 @@ function App() {
     inputMeta: ''
   });
 
+  const [klaytnBlockNumber, setKlaytnBlockNumber] = useState();
+
   const { inputErc20Address, inputErc721Address, inputMeta } = inputs; // 비구조화 할당을 통해 값 추출
+
 
   //초기 동작 메타마스크 자동 실행
   useEffect(() => {
     connect();
   }, []);
-
+  //ganache
   const connect = async () => {
     if (window.ethereum) {
       provider = new ethers.providers.Web3Provider(window.ethereum);
       await provider.send("eth_requestAccounts", []);
       signer = provider.getSigner();
       const address = await signer.getAddress();
-      console.log("TT"+address);
+
       setUserAddress(address);
 
       //ERC-20 정보 가져오기
       const erc20Artifact = require("./contracts/MyToken.json");
       const erc20Abi = erc20Artifact.abi;
-      const erc20ContractAddress = "0x842D06975A0d2a772A6Fd2484529A6c5B47A2cb8";
+      const erc20ContractAddress = process.env.REACT_APP_ERC20_CONTRACT_ADDRESS;
 
       //ERC-721 정보 가져오기
       const erc721Artifact = require("./contracts/MyNFT.json");
       const erc721Abi = erc721Artifact.abi;
-      const erc721ContractAddress = "0x78A361125Aec60d51784C64B15bA7BCe266eA37B";
+      const erc721ContractAddress = process.env.REACT_APP_ERC721_CONTRACT_ADDRESS;
 
       //read 전용
       setErc20_r(new ethers.Contract(erc20ContractAddress, erc20Abi, provider));
@@ -57,11 +60,23 @@ function App() {
       setErc721_r(new ethers.Contract(erc721ContractAddress, erc721Abi, provider));
       //read, write 전용
       setErc721_w(new ethers.Contract(erc721ContractAddress, erc721Abi, signer));
+
     } else {
       alert("Metamask install please");
       window.location.href =
         "https://chrome.google.com/webstore/detail/metamask/nkbihfbeogaeaoehlefnkodbefgpgknn";
     }
+  };
+
+  const klaytnConnect = async () => {
+    const accessKeyId = process.env.REACT_APP_KLAYTN_ACCESS_KEY;
+    const secretAccessKey = process.env.REACT_APP_KLAYTN_SECRET_KEY;
+    const chainId = 1001
+    
+    const caver = new CaverExtKAS()
+    caver.initKASAPI(chainId, accessKeyId, secretAccessKey)
+    const blockNumber = await caver.rpc.klay.getBlockNumber()
+    setKlaytnBlockNumber(blockNumber);
   };
 
   //내 토큰 정보받아오기
@@ -184,6 +199,10 @@ function App() {
           return <p>{data}</p>
         })}
 
+        <br/>
+        <header className="App-header">Klaytn KIP37(ERC-1155)</header>
+        <label>Klaytn Block Number: {klaytnBlockNumber} </label>
+        <button onClick={klaytnConnect}>klaytn 연결</button>
       </body>
     </div>
   );
