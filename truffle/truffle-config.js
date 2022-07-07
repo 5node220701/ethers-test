@@ -20,6 +20,7 @@
 
  const HDWalletProvider = require('truffle-hdwallet-provider-klaytn');
  const privateKey = '0xc25b7bac1d462fbb23ea76411e04c716ff80ea591ebb25c4d0fd74d43a0b28a4';
+ //0x5ecb6d377da754c181b81482ec581156991fc08f197ab4c59934c07db58458c5
 // const fs = require('fs');
 // const mnemonic = fs.readFileSync(".secret").toString().trim();
 

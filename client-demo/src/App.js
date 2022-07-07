@@ -1,11 +1,11 @@
 import './App.css';
 import { ethers } from "ethers";
 import { useEffect, useState } from 'react';
-
+import { ethConnect, balanceOf } from '../src/function/myEth'
+import { klaytnConnect } from '../src/function/myKlaytn'
 function App() {
-  let provider = undefined;
-  let signer = undefined;
-
+  const [provider, setProvider]  = useState();
+  const [signer, setSigner]  = useState();
   const [tokenName, setTokenName] = useState("NULL");
   const [tokenCount, setTokenCount] = useState();
   const [userAddress, setUserAddress] = useState();
@@ -16,85 +16,71 @@ function App() {
   const [erc721_r, setErc721_r] = useState();
   const [erc721_w, setErc721_w] = useState();
   const [myNftList, setMyNftList] = useState();
+  const [myKIP37List, setMyKIP37List] = useState();
+  const [myKIP37TokenList, setMyKIP37TokenList] = useState();
+  const [myKIP37BalanceList, setMyKIP37BalanceList] = useState();
+  const [caver, setCaver] = useState();
+
   const [inputs, setInputs] = useState({
     inputErc20Address: '',
     inputErc721Address: '',
-    inputMeta: ''
+    inputMeta: '',
+    inputKIP37Alias: '',
+    inputKlaytnAddress: '',
+    inputKlaytnToAddress: '',
   });
 
   const [klaytnBlockNumber, setKlaytnBlockNumber] = useState();
 
-  const { inputErc20Address, inputErc721Address, inputMeta } = inputs; // 비구조화 할당을 통해 값 추출
-
+  const { inputErc20Address, inputErc721Address, inputMeta, inputKIP37Alias, inputKlaytnAddress, inputKlaytnToAddress } = inputs; // 비구조화 할당을 통해 값 추출
 
   //초기 동작 메타마스크 자동 실행
   useEffect(() => {
-    connect();
+    initEth();
+    initKlaytn();
   }, []);
+
   //ganache
-  const connect = async () => {
-    if (window.ethereum) {
-      provider = new ethers.providers.Web3Provider(window.ethereum);
-      await provider.send("eth_requestAccounts", []);
-      signer = provider.getSigner();
-      const address = await signer.getAddress();
+  const initEth = async () => {
+    const {provider, signer, userAddress, erc20_r, erc20_w, erc721_r, erc721_w} =  await ethConnect();
+    
+    setProvider(provider);
+    setSigner(signer);
+    setUserAddress(userAddress);
 
-      setUserAddress(address);
+    //read 전용
+    setErc20_r(erc20_r);
+    //write 전용
+    setErc20_w(erc20_w);
+    //read 전용
+    setErc721_r(erc721_r);
+    //read, write 전용
+    setErc721_w(erc721_w);
 
-      //ERC-20 정보 가져오기
-      const erc20Artifact = require("./contracts/MyToken.json");
-      const erc20Abi = erc20Artifact.abi;
-      const erc20ContractAddress = process.env.REACT_APP_ERC20_CONTRACT_ADDRESS;
-
-      //ERC-721 정보 가져오기
-      const erc721Artifact = require("./contracts/MyNFT.json");
-      const erc721Abi = erc721Artifact.abi;
-      const erc721ContractAddress = process.env.REACT_APP_ERC721_CONTRACT_ADDRESS;
-
-      //read 전용
-      setErc20_r(new ethers.Contract(erc20ContractAddress, erc20Abi, provider));
-      //read, write 전용
-      setErc20_w(new ethers.Contract(erc20ContractAddress, erc20Abi, signer));
-
-            //read 전용
-      setErc721_r(new ethers.Contract(erc721ContractAddress, erc721Abi, provider));
-      //read, write 전용
-      setErc721_w(new ethers.Contract(erc721ContractAddress, erc721Abi, signer));
-
-    } else {
-      alert("Metamask install please");
-      window.location.href =
-        "https://chrome.google.com/webstore/detail/metamask/nkbihfbeogaeaoehlefnkodbefgpgknn";
-    }
   };
 
-  const klaytnConnect = async () => {
-    const accessKeyId = process.env.REACT_APP_KLAYTN_ACCESS_KEY;
-    const secretAccessKey = process.env.REACT_APP_KLAYTN_SECRET_KEY;
-    const chainId = 1001
-    
-    const caver = new CaverExtKAS()
-    caver.initKASAPI(chainId, accessKeyId, secretAccessKey)
-    const blockNumber = await caver.rpc.klay.getBlockNumber()
-    setKlaytnBlockNumber(blockNumber);
+  const initKlaytn = async () => {
+    setCaver(await klaytnConnect());
+
   };
 
   //내 토큰 정보받아오기
   const myTokenGetClick = async () => {
+
+    setTokenCount((await erc20_r.balanceOf(userAddress)).toString());
     setTokenName(await erc20_r.symbol());
-    let data = await erc20_r.balanceOf(userAddress)
-    console.log(data.toString())
-    setTokenCount(data.toString());
+
   };
 
   //토큰 전송
   const transformClick = async () => {
-
     // Each mtt has 18 decimal places
     // 단위 변경
     const mtt = ethers.utils.parseUnits("100.0", 18);
-    console.log(mtt);
+
     const tx = erc20_w.transfer(inputErc20Address, mtt);
+
+    console.log(tx);
   };
 
   //Mint NFT
@@ -150,6 +136,51 @@ function App() {
     if(to.toLowerCase()===account.toLowerCase())return true;
     else return false;
   }
+  //-------KLAYTN----------------
+  const getKlaytnBlockNumber = async() =>{
+    const blockNumber = await caver.rpc.klay.getBlockNumber()
+    setKlaytnBlockNumber(blockNumber);
+  }
+
+  const deployKIP37 = async() =>{
+    console.log(inputKIP37Alias);
+    const result = await caver.kas.kip37.deploy('https://token-cdn-domain/{id}.json', inputKIP37Alias)
+    console.log(result);
+  }
+
+  const getKIP37List = async() =>{
+    const list = await caver.kas.kip37.getContractList()
+    console.log(list.items);
+    setMyKIP37List(list.items);
+  }
+
+  const createKIP37Token = async() =>{
+    const created = await caver.kas.kip37.create(inputKIP37Alias, '0x3', '0x100000', 'https://token-cdn-domain/my-djLee.json')
+    console.log(created);
+  }
+
+  const getKIP37TokenList = async() =>{
+    const tokens = await caver.kas.kip37.getTokenList(inputKIP37Alias);
+    setMyKIP37TokenList(tokens.items);
+    console.log(tokens);
+  }
+  
+  const addMintToken = async() =>{
+    const minted = await caver.kas.kip37.mint(inputKIP37Alias, '0xf3908bd0201d2cad28afe411d740a81f006d3e8e', ['0x1'], ['0x100'])
+  }
+
+  const getTokenListByOwner = async() =>{
+    const list = await caver.kas.kip37.getTokenListByOwner(inputKIP37Alias, inputKlaytnAddress)
+    setMyKIP37BalanceList(list.items);
+  }
+  const transferKIP37 = async() =>{
+    const result = await caver.kas.kip37.transfer(inputKIP37Alias, inputKlaytnAddress, inputKlaytnToAddress, ['0x1'], ['0x1000'])
+    console.log(result);
+  }
+  const burnKIP37 = async() =>{
+    const result = await caver.kas.kip37.burn(inputKIP37Alias, ['0x2'], ['0x200']);
+    console.log(result);
+  }
   return (
     <div className="App">
       <header className="App-header">ETH TEST</header>
@@ -166,7 +197,7 @@ function App() {
         <label>전송할 주소 </label>
         <input
           type="text"
-          name= "inputErc20Address"
+          name="inputErc20Address"
           onChange={handleChange}
           value={inputErc20Address}
         ></input>
@@ -178,31 +209,156 @@ function App() {
         <label>NFT Metadata: </label>
         <input
           type="text"
-          name= "inputMeta"
+          name="inputMeta"
           onChange={handleChange}
           value={inputMeta}
         ></input>
-        <br/>
+        <br />
         <label>전송할 주소 </label>
         <input
           type="text"
-          name= "inputErc721Address"
+          name="inputErc721Address"
           onChange={handleChange}
           value={inputErc721Address}
         ></input>
         <button onClick={mintClick}>전송</button>
 
-        <br/>
+        <br />
         <button onClick={getNftClick}>myNFT 조회</button>
-        <br/>
-        {myNftList&&myNftList.map((data)=>{
-          return <p>{data}</p>
-        })}
+        <br />
+        {myNftList &&
+          myNftList.map((data) => {
+            return <p>{data}</p>;
+          })}
 
-        <br/>
+        <br />
+        <br />
         <header className="App-header">Klaytn KIP37(ERC-1155)</header>
         <label>Klaytn Block Number: {klaytnBlockNumber} </label>
-        <button onClick={klaytnConnect}>klaytn 연결</button>
+        <br />
+        <button onClick={getKlaytnBlockNumber}>klaytn 블록조회</button>
+        <br />
+        <br />
+        <label>Alias </label>
+        <input
+          type="text"
+          name="inputKIP37Alias"
+          onChange={handleChange}
+          value={inputKIP37Alias}
+        ></input>
+        <button onClick={deployKIP37}>KIP37 배포</button>
+        <br />
+        <br />
+        <button onClick={getKIP37List}>나의 KIP37 목록 조회</button>
+        <br />
+        {myKIP37List &&
+          myKIP37List.map((data, index) => {
+            return <p key={index}>{data.alias}</p>;
+          })}
+        <br />
+        <label>Alias </label>
+        <input
+          type="text"
+          name="inputKIP37Alias"
+          onChange={handleChange}
+          value={inputKIP37Alias}
+        ></input>
+        <button onClick={createKIP37Token}>해당 KIP37의 토큰 발행</button>
+        <br />
+
+        <label>Alias </label>
+        <input
+          type="text"
+          name="inputKIP37Alias"
+          onChange={handleChange}
+          value={inputKIP37Alias}
+        ></input>
+        <button onClick={getKIP37TokenList}>
+          해당 KIP37의 토큰 정보 가져오기
+        </button>
+        <br />
+        {myKIP37TokenList &&
+          myKIP37TokenList.map((data) => {
+            return (
+              <p>
+                {data.tokenId}, {data.tokenUri}, {data.totalSupply}
+              </p>
+            );
+          })}
+
+        <br />
+
+        <label>Alias </label>
+        <input
+          type="text"
+          name="inputKIP37Alias"
+          onChange={handleChange}
+          value={inputKIP37Alias}
+        ></input>
+        <button onClick={addMintToken}>토큰 추가 발행</button>
+
+        <br />
+        <label>Alias </label>
+        <input
+          type="text"
+          name="inputKIP37Alias"
+          onChange={handleChange}
+          value={inputKIP37Alias}
+        ></input>
+        <label>Klaytn Address</label>
+        <input
+          type="text"
+          name="inputKlaytnAddress"
+          onChange={handleChange}
+          value={inputKlaytnAddress}
+        ></input>
+        <button onClick={getTokenListByOwner}>토큰 소유 조회</button>
+        <br />
+        {myKIP37BalanceList &&
+          myKIP37BalanceList.map((data) => {
+            return (
+              <p>
+                토큰 수량:{data.balance}, 토큰 URI:{data.tokenUri}, 날짜:
+                {data.updatedAt}
+              </p>
+            );
+          })}
+
+        <br />
+
+        <label>Alias </label>
+        <input
+          type="text"
+          name="inputKIP37Alias"
+          onChange={handleChange}
+          value={inputKIP37Alias}
+        ></input>
+        <label>Klaytn Owner Address</label>
+        <input
+          type="text"
+          name="inputKlaytnAddress"
+          onChange={handleChange}
+          value={inputKlaytnAddress}
+        ></input>
+        <label>Klaytn To Address</label>
+        <input
+          type="text"
+          name="inputKlaytnToAddress"
+          onChange={handleChange}
+          value={inputKlaytnToAddress}
+        ></input>
+        <button onClick={transferKIP37}>토큰 전송</button>
+
+        <br />
+
+        <label>Alias </label>
+        <input
+          type="text"
+          name="inputKIP37Alias"
+          onChange={handleChange}
+          value={inputKIP37Alias}
+        ></input>
+         <button onClick={burnKIP37}>토큰 소각</button>
       </body>
     </div>
   );

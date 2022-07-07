@@ -1,6 +1,6 @@
 // contracts/GameItems.sol
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.6;
+pragma solidity ^0.8.7;
 
 import "../node_modules/@klaytn/contracts/KIP/token/KIP37/KIP37.sol";
 
