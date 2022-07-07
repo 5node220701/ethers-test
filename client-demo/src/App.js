@@ -1,11 +1,11 @@
 import './App.css';
 import { ethers } from "ethers";
 import { useEffect, useState } from 'react';
-import { ethConnect, balanceOf } from '../src/function/myEth'
+import { ethConnect } from '../src/function/myEth'
 import { klaytnConnect } from '../src/function/myKlaytn'
 function App() {
-  const [provider, setProvider]  = useState();
-  const [signer, setSigner]  = useState();
+  //const [provider, setProvider]  = useState();
+  //const [signer, setSigner]  = useState();
   const [tokenName, setTokenName] = useState("NULL");
   const [tokenCount, setTokenCount] = useState();
   const [userAddress, setUserAddress] = useState();
@@ -19,6 +19,7 @@ function App() {
   const [myKIP37List, setMyKIP37List] = useState();
   const [myKIP37TokenList, setMyKIP37TokenList] = useState();
   const [myKIP37BalanceList, setMyKIP37BalanceList] = useState();
+  const [klaytnAddress, setKlaytnAddress] = useState();
   const [caver, setCaver] = useState();
 
   const [inputs, setInputs] = useState({
@@ -42,10 +43,10 @@ function App() {
 
   //ganache
   const initEth = async () => {
-    const {provider, signer, userAddress, erc20_r, erc20_w, erc721_r, erc721_w} =  await ethConnect();
+    const {userAddress, erc20_r, erc20_w, erc721_r, erc721_w} =  await ethConnect();
     
-    setProvider(provider);
-    setSigner(signer);
+    //setProvider(provider);
+    //setSigner(signer);
     setUserAddress(userAddress);
 
     //read 전용
@@ -86,6 +87,7 @@ function App() {
   //Mint NFT
   const mintClick = async () => {
     const tx = erc721_w.mintNFT(inputErc721Address, inputMeta);
+    console.log(tx);
   };
 
   //get My NFT
@@ -104,19 +106,18 @@ function App() {
     });
   };
 
+  //자기가 소유한 NFT 아이디 가져오기. 해당 ID로 NFT조회 연결 가능
+  //moralis API로 대체 가능
   const listTokensOfOwner = async() => {
     const sentLogs = await erc721_r.queryFilter(erc721_r.filters.Transfer(userAddress,null));
-    console.log(sentLogs);
-
     const receivedLogs = await erc721_r.queryFilter(erc721_r.filters.Transfer(null, userAddress));
-    console.log(receivedLogs);
 
     const logs = sentLogs.concat(receivedLogs).sort(
       (a, b) =>
         a.blockNumber - b.blockNumber ||
         a.transactionIndex - b.TransactionIndex,
     );;
-    console.log(logs);
+
     const owned = [];
 
     for (const log of logs) {
@@ -136,6 +137,7 @@ function App() {
     if(to.toLowerCase()===account.toLowerCase())return true;
     else return false;
   }
+
   //-------KLAYTN----------------
   const getKlaytnBlockNumber = async() =>{
     const blockNumber = await caver.rpc.klay.getBlockNumber()
@@ -144,7 +146,10 @@ function App() {
 
   const deployKIP37 = async() =>{
     console.log(inputKIP37Alias);
-    const result = await caver.kas.kip37.deploy('https://token-cdn-domain/{id}.json', inputKIP37Alias)
+    const result = await caver.kas.kip37.deploy('https://token-cdn-domain/{id}.json', inputKIP37Alias, {userFeePayer:{
+      krn:"krn:1001:wallet:f791b09e-3c10-462a-92df-f5afe79dbc88:feepayer-pool:my",
+      address:"0xd8761Eb503dde36d9196798984adCe456378f82F"
+    }})
     console.log(result);
   }
 
@@ -166,21 +171,36 @@ function App() {
   }
   
   const addMintToken = async() =>{
-    const minted = await caver.kas.kip37.mint(inputKIP37Alias, '0xf3908bd0201d2cad28afe411d740a81f006d3e8e', ['0x1'], ['0x100'])
+    console.log(inputKIP37Alias);
+    console.log(klaytnAddress);
+    const minted = await caver.kas.kip37.mint(inputKIP37Alias, klaytnAddress, ['0x3'], ['0x1000'])
+    console.log(minted);
   }
 
   const getTokenListByOwner = async() =>{
     const list = await caver.kas.kip37.getTokenListByOwner(inputKIP37Alias, inputKlaytnAddress)
+    console.log(list);
     setMyKIP37BalanceList(list.items);
   }
   const transferKIP37 = async() =>{
-    const result = await caver.kas.kip37.transfer(inputKIP37Alias, inputKlaytnAddress, inputKlaytnToAddress, ['0x1'], ['0x1000'])
+    console.log(inputKIP37Alias);
+    console.log(inputKlaytnAddress);
+    console.log(inputKlaytnToAddress);
+    const result = await caver.kas.kip37.transfer(inputKIP37Alias,inputKlaytnAddress,inputKlaytnAddress, inputKlaytnToAddress, ['0x3'], ['0x100'])
+    
     console.log(result);
   }
   const burnKIP37 = async() =>{
-    const result = await caver.kas.kip37.burn(inputKIP37Alias, ['0x2'], ['0x200']);
+    const result = await caver.kas.kip37.burn(inputKIP37Alias, ['0x3'], ['0x200']);
     console.log(result);
   }
+
+  const getKlaytnAddress = async() =>{
+    const list = await caver.kas.wallet.getAccountList()
+    console.log(list.items);
+    setKlaytnAddress('0xf3908bd0201d2cad28afe411d740a81f006d3e8e');
+  }
+
   return (
     <div className="App">
       <header className="App-header">ETH TEST</header>
@@ -227,16 +247,19 @@ function App() {
         <button onClick={getNftClick}>myNFT 조회</button>
         <br />
         {myNftList &&
-          myNftList.map((data) => {
-            return <p>{data}</p>;
+          myNftList.map((data, index) => {
+            return <p key={index}>{data}</p>;
           })}
 
         <br />
         <br />
         <header className="App-header">Klaytn KIP37(ERC-1155)</header>
         <label>Klaytn Block Number: {klaytnBlockNumber} </label>
-        <br />
         <button onClick={getKlaytnBlockNumber}>klaytn 블록조회</button>
+        <br />
+        <br />
+        <label>Klaytn Address: {klaytnAddress} </label>
+        <button onClick={getKlaytnAddress}>klaytn 주소 조회</button>
         <br />
         <br />
         <label>Alias </label>
@@ -278,9 +301,9 @@ function App() {
         </button>
         <br />
         {myKIP37TokenList &&
-          myKIP37TokenList.map((data) => {
+          myKIP37TokenList.map((data,index) => {
             return (
-              <p>
+              <p key={index}>
                 {data.tokenId}, {data.tokenUri}, {data.totalSupply}
               </p>
             );
@@ -296,7 +319,7 @@ function App() {
           value={inputKIP37Alias}
         ></input>
         <button onClick={addMintToken}>토큰 추가 발행</button>
-
+        <br />
         <br />
         <label>Alias </label>
         <input
@@ -315,9 +338,9 @@ function App() {
         <button onClick={getTokenListByOwner}>토큰 소유 조회</button>
         <br />
         {myKIP37BalanceList &&
-          myKIP37BalanceList.map((data) => {
+          myKIP37BalanceList.map((data,index) => {
             return (
-              <p>
+              <p key={index}>
                 토큰 수량:{data.balance}, 토큰 URI:{data.tokenUri}, 날짜:
                 {data.updatedAt}
               </p>
@@ -350,7 +373,7 @@ function App() {
         <button onClick={transferKIP37}>토큰 전송</button>
 
         <br />
-
+        <br />
         <label>Alias </label>
         <input
           type="text"
@@ -358,7 +381,7 @@ function App() {
           onChange={handleChange}
           value={inputKIP37Alias}
         ></input>
-         <button onClick={burnKIP37}>토큰 소각</button>
+        <button onClick={burnKIP37}>토큰 소각</button>
       </body>
     </div>
   );
