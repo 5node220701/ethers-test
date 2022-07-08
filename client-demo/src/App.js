@@ -144,6 +144,7 @@ function App() {
     setKlaytnBlockNumber(blockNumber);
   }
 
+  //KIP37 배포 대납계정 추가
   const deployKIP37 = async() =>{
     console.log(inputKIP37Alias);
     const result = await caver.kas.kip37.deploy('https://token-cdn-domain/{id}.json', inputKIP37Alias, {userFeePayer:{
@@ -153,23 +154,27 @@ function App() {
     console.log(result);
   }
 
+  // 내가 발행한 KIP37 컨트랙트 리스트 전체 가져오기
   const getKIP37List = async() =>{
     const list = await caver.kas.kip37.getContractList()
     console.log(list.items);
     setMyKIP37List(list.items);
   }
 
+  // alias의 KIP37 NFT, 토큰 생성
   const createKIP37Token = async() =>{
     const created = await caver.kas.kip37.create(inputKIP37Alias, '0x3', '0x100000', 'https://token-cdn-domain/my-djLee.json')
     console.log(created);
   }
 
+  // alias에 해당하는 KIP37 토큰 가져오기
   const getKIP37TokenList = async() =>{
     const tokens = await caver.kas.kip37.getTokenList(inputKIP37Alias);
     setMyKIP37TokenList(tokens.items);
     console.log(tokens);
   }
   
+  // alias에 토큰 추가 발행
   const addMintToken = async() =>{
     console.log(inputKIP37Alias);
     console.log(klaytnAddress);
@@ -177,11 +182,14 @@ function App() {
     console.log(minted);
   }
 
+  //내가 소유한 토큰 목록 가져오기
   const getTokenListByOwner = async() =>{
     const list = await caver.kas.kip37.getTokenListByOwner(inputKIP37Alias, inputKlaytnAddress)
     console.log(list);
     setMyKIP37BalanceList(list.items);
   }
+
+  //토큰 전송
   const transferKIP37 = async() =>{
     console.log(inputKIP37Alias);
     console.log(inputKlaytnAddress);
@@ -190,11 +198,14 @@ function App() {
     
     console.log(result);
   }
+
+  //토큰 소각
   const burnKIP37 = async() =>{
     const result = await caver.kas.kip37.burn(inputKIP37Alias, ['0x3'], ['0x200']);
     console.log(result);
   }
 
+  //내가 관리하는 지갑주소 가져오기
   const getKlaytnAddress = async() =>{
     const list = await caver.kas.wallet.getAccountList()
     console.log(list.items);
